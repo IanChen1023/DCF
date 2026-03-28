@@ -3,23 +3,23 @@ import pandas as pd
 
 # 設定網頁標題
 st.set_page_config(page_title="手動 DCF 估值工具 (5年期)", layout="wide")
-st.title("📈 企業價值與股權價值估算器 (純手動模式)")
+st.title("📈 企業價值與股權價值估算器")
 
 # --- 左側控制面板 ---
-st.sidebar.header("🔍 第一步：公司資訊")
+st.sidebar.header("🔍 公司資訊")
 ticker = st.sidebar.text_input("公司名稱 / 代號", "AAPL").upper()
 
 st.sidebar.markdown("---")
-st.sidebar.header("⚙️ 第二步：手動輸入財務數據 (Million)")
+st.sidebar.header("⚙️ 財務數據 (in Million)")
 
 # 按照您的要求排序：FCF -> 現金 -> 總負債 -> 流通股數
-f_fcf = st.sidebar.number_input("基準自由現金流 (FCF)", value=0.0, format="%.2f", step=10.0)
+f_fcf = st.sidebar.number_input("自由現金流 (FCF)", value=0.0, format="%.2f", step=10.0)
 f_cash = st.sidebar.number_input("現金及其他投資", value=0.0, format="%.2f", step=10.0)
 f_debt = st.sidebar.number_input("總負債 (Total Debt)", value=0.0, format="%.2f", step=10.0)
 f_shares = st.sidebar.number_input("流通股數 (Shares)", value=0.0, format="%.2f", step=1.0)
 
 st.sidebar.markdown("---")
-st.sidebar.header("🔮 第三步：預測成長假設 (%)")
+st.sidebar.header("🔮 成長假設 (%)")
 g_rate = st.sidebar.number_input("未來 5 年預期成長率 (%)", value=10.0, format="%.2f") / 100
 wacc = st.sidebar.number_input("折現率 WACC (%)", value=8.0, format="%.2f") / 100
 t_g = st.sidebar.number_input("永續成長率 (%)", value=2.5, format="%.2f") / 100
@@ -57,7 +57,7 @@ def run_dcf_math():
 ev, eq_val, fair_p, fcfs, pv_fcf, pv_tv = run_dcf_math()
 
 # --- 主畫面顯示結果 ---
-st.subheader(f"📊 {ticker} 5年期估值詳情 (手動模式)")
+st.subheader(f"📊 {ticker} 5年期估值詳情")
 
 # 關鍵指標顯示
 m_col1, m_col2 = st.columns(2)
@@ -88,7 +88,7 @@ with c_col3:
     st.write(f"**最終合理價: ${fair_p:.2f}**")
 
 st.markdown("---")
-st.subheader("📈 未來 5 年自由現金流投影 (Million USD)")
+st.subheader("📈 未來 5 年自由現金流投影 (in Million)")
 if f_fcf > 0:
     chart_data = pd.DataFrame(fcfs, index=[i+1 for i in range(5)], columns=["Projected FCF"])
     st.bar_chart(chart_data)
