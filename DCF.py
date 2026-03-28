@@ -1,19 +1,40 @@
 import streamlit as st
 import pandas as pd
 
-# 設定網頁標題
-st.set_page_config(page_title="手動 DCF 估值工具 (5年期)", layout="wide")
+# 1. 設定網頁標題與佈局
+st.set_page_config(page_title="手動 DCF 估值工具 (Clean Input)", layout="wide")
 st.title("📈 企業價值與股權價值估算器")
 
-# --- 左側控制面板 ---
+# --- 2. 自定義 CSS：隱藏所有 number_input 的加減號 (Steppers) ---
+# 這段 CSS 會強制瀏覽器不顯示數字輸入格的上下箭頭/加減號
+hide_steppers_css = """
+<style>
+/* 針對 Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* 針對 Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
+</style>
+"""
+# 注入 CSS
+st.markdown(hide_steppers_css, unsafe_allow_html=True)
+
+
+# --- 3. 左側控制面板 ---
 st.sidebar.header("🔍 公司資訊")
 ticker = st.sidebar.text_input("公司名稱 / 代號", "AAPL").upper()
 
 st.sidebar.markdown("---")
 st.sidebar.header("⚙️ 財務數據 (in Million)")
 
-# 按照您的要求排序：FCF -> 現金 -> 總負債 -> 流通股數
-f_fcf = st.sidebar.number_input("自由現金流 (FCF)", value=0.0, format="%.2f", step=10.0)
+# 所有 number_input 雖然保留了 step 參數（供鍵盤上下鍵使用），但介面上已無按鈕
+f_fcf = st.sidebar.number_input("基準自由現金流 (FCF)", value=0.0, format="%.2f", step=10.0)
 f_cash = st.sidebar.number_input("現金及其他投資", value=0.0, format="%.2f", step=10.0)
 f_debt = st.sidebar.number_input("總負債 (Total Debt)", value=0.0, format="%.2f", step=10.0)
 f_shares = st.sidebar.number_input("流通股數 (Shares)", value=0.0, format="%.2f", step=1.0)
@@ -24,48 +45,37 @@ g_rate = st.sidebar.number_input("未來 5 年預期成長率 (%)", value=10.0, 
 wacc = st.sidebar.number_input("折現率 WACC (%)", value=8.0, format="%.2f") / 100
 t_g = st.sidebar.number_input("永續成長率 (%)", value=2.5, format="%.2f") / 100
 
-# --- DCF 計算邏輯 ---
+# --- 4. DCF 計算邏輯 (維持不變) ---
 def run_dcf_math():
     fcf_list = []
     temp_fcf = f_fcf
-    # 預測未來 5 年的現金流
     for i in range(5):
         temp_fcf *= (1 + g_rate)
         fcf_list.append(temp_fcf)
         
-    # 1. 計算 5 年現金流的現值 (PV of FCF)
     pv_fcf_sum = sum([fcf / ((1 + wacc) ** (i + 1)) for i, fcf in enumerate(fcf_list)])
     
-    # 2. 計算終極價值現值 (PV of Terminal Value)
     pv_tv = 0
     if wacc > t_g:
-        # 終極價值公式：[Year 5 FCF * (1 + t_g)] / (wacc - t_g)
         terminal_value = (fcf_list[-1] * (1 + t_g)) / (wacc - t_g)
         pv_tv = terminal_value / ((1 + wacc) ** 5)
     
-    # 3. 算出企業價值 (Enterprise Value)
     enterprise_value = pv_fcf_sum + pv_tv
-    
-    # 4. 價值橋接：股權價值 = EV + 現金 - 負債
     equity_value = enterprise_value + f_cash - f_debt
-    
-    # 5. 每股合理價
     fair_price = equity_value / f_shares if f_shares > 0 else 0
     
     return enterprise_value, equity_value, fair_price, fcf_list, pv_fcf_sum, pv_tv
 
 ev, eq_val, fair_p, fcfs, pv_fcf, pv_tv = run_dcf_math()
 
-# --- 主畫面顯示結果 ---
+# --- 5. 主畫面顯示結果 ---
 st.subheader(f"📊 {ticker} 5年期估值詳情")
 
-# 關鍵指標顯示
 m_col1, m_col2 = st.columns(2)
-# 由於移除了自動抓取，市價部分如果您需要比對，可以自行在側邊欄增加一個市價輸入框
 m_col1.metric("模型預估合理價", f"${fair_p:.2f}")
 st.markdown("---")
 
-# 價值拆解顯示 (Value Breakdown)
+# 價值拆解顯示
 st.write("### 🏗️ 5年期估值橋接過程 (Calculation Bridge)")
 c_col1, c_col2, c_col3 = st.columns(3)
 
@@ -95,4 +105,4 @@ if f_fcf > 0:
 else:
     st.warning("請在左側輸入『基準自由現金流』以產生預測圖表。")
 
-st.caption("註：本工具僅供參考，所有數據需由使用者自行從財報中提取並填寫。")
+st.caption("註：本純淨模式已移除輸入格旁之加減號，請手動鍵入精確數值。")
